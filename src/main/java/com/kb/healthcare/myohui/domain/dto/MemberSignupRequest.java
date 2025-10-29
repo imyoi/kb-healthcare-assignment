@@ -2,6 +2,8 @@ package com.kb.healthcare.myohui.domain.dto;
 
 
 import com.kb.healthcare.myohui.domain.entity.Member;
+import com.kb.healthcare.myohui.global.enums.ErrorCode;
+import com.kb.healthcare.myohui.global.exception.CustomException;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -37,7 +39,21 @@ public class MemberSignupRequest {
     }
 
     public void validate() {
-        // TODO 비밀번호 유효성 체크
+        if (!isValidPassword(password)) {
+            throw new CustomException(ErrorCode.MEMBER_INVALID_PASSWORD_RULE);
+        }
+    }
+
+    /**
+     * 비밀번호 유효성 검증
+     * - 영문 + 숫자 + 특수문자 조합, 8~20자
+     */
+    private boolean isValidPassword(String password) {
+        if (password == null || password.isBlank()) {
+            return false;
+        }
+        String regex = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,20}$";
+        return password.matches(regex);
     }
 
     public Member toEntity() {

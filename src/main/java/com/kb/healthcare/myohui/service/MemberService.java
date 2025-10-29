@@ -21,12 +21,13 @@ public class MemberService {
      * */
     @Transactional
     public MemberResponse signup(MemberSignupRequest request) {
+        request.validate();
+
         if (memberRepository.existsByEmail(request.getEmail())) {
             throw new CustomException(ErrorCode.EMAIL_ALREADY_EXISTS);
         }
         Member member = request.toEntity();
         Member saved = memberRepository.save(member);
-
         return MemberResponse.from(saved);
     }
 }

@@ -23,6 +23,7 @@ public enum ErrorCode {
     MEMBER_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "MEMBER_ALREADY_EXISTS", "이미 등록된 회원입니다."),
     EMAIL_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "EMAIL_ALREADY_EXISTS", "이미 등록된 이메일입니다."),
     MEMBER_PASSWORD_MISMATCH(HttpStatus.BAD_REQUEST, "MEMBER_PASSWORD_MISMATCH", "비밀번호가 일치하지 않습니다."),
+    MEMBER_INVALID_PASSWORD_RULE(HttpStatus.BAD_REQUEST, "MEMBER_INVALID_PASSWORD_RULE", "비밀번호는 영문, 숫자, 특수문자를 포함해야 합니다."),
 
     // --- 건강데이터 (HEALTH) ---
     HEALTH_INVALID_DATE(HttpStatus.BAD_REQUEST, "HEALTH_INVALID_DATE", "유효하지 않은 날짜 형식입니다."),
