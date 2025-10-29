@@ -16,7 +16,8 @@ public class SecurityConfig {
     };
 
     private static final String[] PUBLIC_API = {
-        "/health"
+        "/health",
+        "/api/v1/members/signup"
     };
 
     @Bean
