@@ -46,7 +46,7 @@ public class MemberSignupRequest {
 
     /**
      * 비밀번호 유효성 검증
-     * - 영문 + 숫자 + 특수문자 조합, 8~20자
+     * - 영문 + 숫자 + 특수문자 조합, 8~20자 이내
      */
     private boolean isValidPassword(String password) {
         if (password == null || password.isBlank()) {
@@ -54,6 +54,10 @@ public class MemberSignupRequest {
         }
         String regex = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,20}$";
         return password.matches(regex);
+    }
+
+    public void updatePassword(String encodedPassword) {
+        this.password = encodedPassword;
     }
 
     public Member toEntity() {
