@@ -8,5 +8,8 @@ public final class ApiUrl {
 
     public static final String API_PREFIX = "/api/v1";
 
+    // --- 회원 (MEMBER) ---
     public static final String SIGNUP = "/members/signup";
+    public static final String LOGIN = "/members/login";
+    public static final String GET_MEMBER = "/members";
 }

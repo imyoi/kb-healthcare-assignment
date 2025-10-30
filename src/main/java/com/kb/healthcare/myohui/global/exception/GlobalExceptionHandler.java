@@ -14,24 +14,46 @@ import java.util.stream.Collectors;
 @RestControllerAdvice(basePackages = "com.kb.healthcare.myohui")
 public class GlobalExceptionHandler {
 
+    /**
+     * 유효성 검증 에러 (HTTP 200)
+     * */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public BaseResponse<?> handleValidationExceptions(MethodArgumentNotValidException ex) {
         List<String> messages = ex.getBindingResult().getFieldErrors().stream()
             .map(FieldError::getDefaultMessage)
             .collect(Collectors.toList());
-        return BaseResponse.error(ErrorCode.COMMON_INVALID_REQUEST.getCode(), String.join(", ", messages));
+
+        return BaseResponse.error(
+            new BaseResponse.Error(
+                ErrorCode.COMMON_INVALID_REQUEST.getCode(),
+                String.join(", ", messages)
+            )
+        );
     }
 
+    /**
+     * 비즈니스 로직 에러 (HTTP 200)
+     * */
     @ExceptionHandler(CustomException.class)
-    public ResponseEntity<BaseResponse<?>> handleCustomException(CustomException e) {
+    public BaseResponse<?> handleCustomException(CustomException e) {
         ErrorCode code = e.getErrorCode();
-        return ResponseEntity
-            .status(code.getStatus())
-            .body(BaseResponse.error(code.getCode(), code.getMessage()));
+        return BaseResponse.error(
+            new BaseResponse.Error(code.getCode(), code.getMessage())
+        );
     }
 
+    /**
+     * 이 외 에러 (HTTP 500)
+     * */
     @ExceptionHandler(Exception.class)
-    public BaseResponse<?> handleException(Exception e) {
-        return BaseResponse.error(ErrorCode.COMMON_INTERNAL_SERVER.getCode(), e.getMessage());
+    public ResponseEntity<BaseResponse<?>> handleException(Exception e) {
+        return ResponseEntity
+            .internalServerError()
+            .body(BaseResponse.error(
+                new BaseResponse.Error(
+                    ErrorCode.COMMON_INTERNAL_SERVER.getCode(),
+                    ErrorCode.COMMON_INTERNAL_SERVER.getMessage()
+                )
+            ));
     }
 }

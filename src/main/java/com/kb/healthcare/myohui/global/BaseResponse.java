@@ -1,5 +1,6 @@
 package com.kb.healthcare.myohui.global;
 
+import com.kb.healthcare.myohui.global.enums.ErrorCode;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -7,19 +8,21 @@ import lombok.Getter;
 @AllArgsConstructor
 public class BaseResponse<T> {
 
-    private final String code;
-    private final String message;
-    private final T data;
+    private boolean success;
+    private final T response;
+    private Error error;
 
-    public static <T> BaseResponse<T> success(String message, T data) {
-        return new BaseResponse<>("SUCCESS", message, data);
+    public static <T> BaseResponse<T> success(T data) {
+        return new BaseResponse<>(true, data, null);
     }
 
-    public static <T> BaseResponse<T> success(String message) {
-        return new BaseResponse<>("SUCCESS", message, null);
+    public static BaseResponse<Void> error(Error error) {
+        return new BaseResponse<>(false, null, error);
     }
 
-    public static BaseResponse<?> error(String code, String message) {
-        return new BaseResponse<>(code, message, null);
+    public record Error(String code, String message) {
+        public static Error of(ErrorCode errorCode) {
+            return new Error(errorCode.getCode(), errorCode.getMessage());
+        }
     }
 }

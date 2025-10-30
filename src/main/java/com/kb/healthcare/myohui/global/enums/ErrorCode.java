@@ -16,6 +16,7 @@ public enum ErrorCode {
     // --- 인증 (AUTH) ---
     AUTH_UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "AUTH_UNAUTHORIZED", "인증이 필요합니다."),
     AUTH_INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_INVALID_TOKEN", "유효하지 않은 토큰입니다."),
+    AUTH_EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_EXPIRED_TOKEN", "만료된 토큰입니다."),
     AUTH_FORBIDDEN(HttpStatus.FORBIDDEN, "AUTH_FORBIDDEN", "접근 권한이 없습니다."),
 
     // --- 회원 (MEMBER) ---
@@ -27,7 +28,7 @@ public enum ErrorCode {
 
     // --- 건강데이터 (HEALTH) ---
     HEALTH_INVALID_DATE(HttpStatus.BAD_REQUEST, "HEALTH_INVALID_DATE", "유효하지 않은 날짜 형식입니다."),
-    HEALTH_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, "HEALTH_RECORD_NOT_FOUND", "해당 건강데이터를 찾을 수 없습니다.");
+    HEALTH_DATA_NOT_FOUND(HttpStatus.NOT_FOUND, "HEALTH_DATA_NOT_FOUND", "해당 건강데이터를 찾을 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;

@@ -1,5 +1,8 @@
 package com.kb.healthcare.myohui.config;
 
+import com.kb.healthcare.myohui.global.jwt.JwtAuthenticationFilter;
+import com.kb.healthcare.myohui.global.jwt.TokenProvider;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -7,9 +10,13 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
+@RequiredArgsConstructor
 public class SecurityConfig {
+
+    private final TokenProvider tokenProvider;
 
     private static final String[] SWAGGER_WHITELIST = {
         "/v3/api-docs/**",
@@ -19,7 +26,7 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_API = {
         "/health",
-        "/api/v1/members/signup"
+        "/api/v1/members/**"
     };
 
     @Bean
@@ -36,6 +43,8 @@ public class SecurityConfig {
                 .requestMatchers(PUBLIC_API).permitAll()
                 .anyRequest().authenticated()
             )
+            .addFilterBefore(new JwtAuthenticationFilter(tokenProvider),
+                UsernamePasswordAuthenticationFilter.class)
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable);
 
