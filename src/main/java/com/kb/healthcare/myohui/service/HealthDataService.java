@@ -1,17 +1,21 @@
 package com.kb.healthcare.myohui.service;
 
+import com.kb.healthcare.myohui.domain.dto.HealthDataDailyResponse;
+import com.kb.healthcare.myohui.domain.dto.HealthDataMonthlyResponse;
 import com.kb.healthcare.myohui.domain.dto.HealthDataRequest;
 import com.kb.healthcare.myohui.domain.entity.HealthDataDaily;
 import com.kb.healthcare.myohui.domain.entity.HealthDataRaw;
 import com.kb.healthcare.myohui.domain.entity.Member;
 import com.kb.healthcare.myohui.domain.enums.HealthProduct;
 import com.kb.healthcare.myohui.domain.enums.HealthSource;
+import com.kb.healthcare.myohui.domain.enums.PeriodType;
 import com.kb.healthcare.myohui.global.enums.ErrorCode;
 import com.kb.healthcare.myohui.global.exception.CustomException;
 import com.kb.healthcare.myohui.repository.HealthDataDailyRepository;
 import com.kb.healthcare.myohui.repository.HealthDataRawRepository;
 import com.kb.healthcare.myohui.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +28,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class HealthDataService {
@@ -74,11 +79,14 @@ public class HealthDataService {
             }
         }
 
-        // 신규 데이터만 저장 후 일별 집계
-        if (!raws.isEmpty()) {
-            healthDataRawRepository.saveAll(raws);
-            aggregateDaily(member, recordKey, raws); // TODO 동기 -> 비동기
+        if (raws.isEmpty()) {
+            log.debug("신규 데이터 없음 - recordKey={}, memberId={}", recordKey, memberId);
+            return;
         }
+
+        // 신규 데이터만 저장 후 일별 집계
+        healthDataRawRepository.saveAll(raws);
+        aggregateDaily(member, recordKey, raws); // TODO 동기 -> 비동기
     }
 
     /**
@@ -120,5 +128,39 @@ public class HealthDataService {
         if (!dailiesToSave.isEmpty()) {
             healthDataDailyRepository.saveAll(dailiesToSave);
         }
+    }
+
+    /**
+     * 건강 데이터 조회 (일별 / 월별)
+     * */
+    @Transactional(readOnly = true)
+    public List<?> getHealthData(Long memberId, PeriodType period, LocalDate startDate, LocalDate endDate) {
+        return switch (period) {
+            case DAILY -> getDaily(memberId, startDate, endDate);
+            case MONTHLY -> getMonthly(memberId, startDate, endDate);
+        };
+    }
+
+    /**
+     * 일별 데이터 조회
+     * */
+    private List<HealthDataDailyResponse> getDaily(Long memberId, LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.of(1900, 1, 1);
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+
+        return healthDataDailyRepository.findAllByMemberIdAndRecordDateBetweenOrderByRecordDateDesc(memberId, start, end)
+            .stream()
+            .map(HealthDataDailyResponse::from)
+            .toList();
+    }
+
+    /**
+     * 월별 데이터 조회
+     * */
+    private List<HealthDataMonthlyResponse> getMonthly(Long memberId, LocalDate startDate, LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.of(1900, 1, 1);
+        LocalDate end = endDate != null ? endDate : LocalDate.now();
+
+        return healthDataDailyRepository.findMonthlyAggregates(memberId, start, end);
     }
 }

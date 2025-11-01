@@ -15,4 +15,5 @@ public final class ApiUrl {
 
     // --- 건강 (HEALTH) ---
     public static final String SAVE_HEALTH_DATA = "/health/data";
+    public static final String GET_HEALTH_DATA = "/health/data";
 }
