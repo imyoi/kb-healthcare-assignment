@@ -3,7 +3,6 @@ package com.kb.healthcare.myohui.service;
 import com.kb.healthcare.myohui.domain.dto.HealthDataDailyResponse;
 import com.kb.healthcare.myohui.domain.dto.HealthDataMonthlyResponse;
 import com.kb.healthcare.myohui.domain.dto.HealthDataRequest;
-import com.kb.healthcare.myohui.domain.entity.HealthDataDaily;
 import com.kb.healthcare.myohui.domain.entity.HealthDataRaw;
 import com.kb.healthcare.myohui.domain.entity.Member;
 import com.kb.healthcare.myohui.domain.enums.HealthProduct;
@@ -24,7 +23,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -34,6 +32,8 @@ import java.util.stream.Collectors;
 public class HealthDataService {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private final HealthDataAggregator healthDataAggregator;
 
     private final MemberRepository memberRepository;
     private final HealthDataRawRepository healthDataRawRepository;
@@ -86,49 +86,13 @@ public class HealthDataService {
 
         // 신규 데이터만 저장 후 일별 집계
         healthDataRawRepository.saveAll(raws);
-        aggregateDaily(member, recordKey, raws); // TODO 동기 -> 비동기
+
+        log.info("aggregateDailyAsync call START (Thread: {})", Thread.currentThread().getName());
+        healthDataAggregator.aggregateDailyAsync(member, recordKey, raws);
+        log.info("aggregateDailyAsync call E N D (Thread: {})", Thread.currentThread().getName());
     }
 
-    /**
-     * 일별 건강 데이터 집계
-     */
-    private void aggregateDaily(Member member, String recordKey, List<HealthDataRaw> raws) {
-        // raw 데이터 일자별 그룹핑
-        Map<LocalDate, List<HealthDataRaw>> groupedByDate =
-            raws.stream().collect(Collectors.groupingBy(r -> r.getPeriodFrom().toLocalDate()));
 
-        if (groupedByDate.isEmpty()) return;
-
-        List<LocalDate> recordDates = new ArrayList<>(groupedByDate.keySet());
-        List<HealthDataDaily> existingList =
-            healthDataDailyRepository.findAllByMemberAndRecordKeyAndRecordDateIn(member, recordKey, recordDates);
-
-        Map<LocalDate, HealthDataDaily> existingMap = existingList.stream()
-            .collect(Collectors.toMap(HealthDataDaily::getRecordDate, d -> d));
-
-        List<HealthDataDaily> dailiesToSave = new ArrayList<>();
-
-        // 일자별 합계 upsert
-        for (Map.Entry<LocalDate, List<HealthDataRaw>> entry : groupedByDate.entrySet()) {
-            LocalDate recordDate = entry.getKey();
-            List<HealthDataRaw> dailyList = entry.getValue();
-
-            int totalSteps = dailyList.stream().mapToInt(HealthDataRaw::getSteps).sum();
-            float totalCalories = (float) dailyList.stream().mapToDouble(HealthDataRaw::getCalories).sum();
-            float totalDistance = (float) dailyList.stream().mapToDouble(HealthDataRaw::getDistance).sum();
-
-            HealthDataDaily existing = existingMap.get(recordDate);
-            if (existing != null) {
-                existing.update(totalSteps, totalCalories, totalDistance);
-            } else {
-                dailiesToSave.add(new HealthDataDaily(member, recordKey, recordDate, totalSteps, totalCalories, totalDistance));
-            }
-        }
-
-        if (!dailiesToSave.isEmpty()) {
-            healthDataDailyRepository.saveAll(dailiesToSave);
-        }
-    }
 
     /**
      * 건강 데이터 조회 (일별 / 월별)
