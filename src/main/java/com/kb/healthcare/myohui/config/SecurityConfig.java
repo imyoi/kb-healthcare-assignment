@@ -25,7 +25,7 @@ public class SecurityConfig {
     };
 
     private static final String[] PUBLIC_API = {
-        "/health",
+        "/actuator/**",
         "/api/v1/members/**"
     };
 

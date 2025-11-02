@@ -5,6 +5,15 @@ spring:
   application:
     name: kb-healthcare
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
 jwt:
   secret: "Kz3P9r!Qv7sYf2@Wn5xH8#bD4tG0^eL6jJ1uC9!aT2pV5zR8mK7qS1&nF0wB3gL"
   access-expiration: 3600000      # 1시간
