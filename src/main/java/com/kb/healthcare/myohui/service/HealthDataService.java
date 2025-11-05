@@ -8,6 +8,7 @@ import com.kb.healthcare.myohui.domain.entity.Member;
 import com.kb.healthcare.myohui.domain.enums.HealthProduct;
 import com.kb.healthcare.myohui.domain.enums.HealthSource;
 import com.kb.healthcare.myohui.domain.enums.PeriodType;
+import com.kb.healthcare.myohui.global.cache.CacheService;
 import com.kb.healthcare.myohui.global.enums.ErrorCode;
 import com.kb.healthcare.myohui.global.exception.CustomException;
 import com.kb.healthcare.myohui.repository.HealthDataDailyRepository;
@@ -32,12 +33,14 @@ import java.util.stream.Collectors;
 public class HealthDataService {
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String DAILY_KEY = "health:daily:";
+    private static final String MONTHLY_KEY = "health:monthly:";
 
-    private final HealthDataAggregator healthDataAggregator;
-
+    private final CacheService cacheService;
     private final MemberRepository memberRepository;
     private final HealthDataRawRepository healthDataRawRepository;
     private final HealthDataDailyRepository healthDataDailyRepository;
+    private final HealthDataAggregator healthDataAggregator;
 
     /**
      * 건강 데이터 저장 및 일별 집계
@@ -90,9 +93,12 @@ public class HealthDataService {
         log.info("aggregateDailyAsync call START (Thread: {})", Thread.currentThread().getName());
         healthDataAggregator.aggregateDailyAsync(member, recordKey, raws);
         log.info("aggregateDailyAsync call E N D (Thread: {})", Thread.currentThread().getName());
+
+        // 캐시 무효화
+        cacheService.deleteCache(DAILY_KEY + memberId);
+        cacheService.deleteCache(MONTHLY_KEY + memberId);
+        log.info("[CACHE INVALIDATE] memberId={}", memberId);
     }
-
-
 
     /**
      * 건강 데이터 조회 (일별 / 월별)
@@ -109,22 +115,43 @@ public class HealthDataService {
      * 일별 데이터 조회
      * */
     private List<HealthDataDailyResponse> getDaily(Long memberId, LocalDate startDate, LocalDate endDate) {
+        // 캐시 조회
+        String cacheKey = DAILY_KEY + memberId;
+        List<HealthDataDailyResponse> cached = cacheService.getCache(cacheKey, List.class);
+        if (cached != null) return cached;
+
+        // 캐시 미스 시 DB 조회
         LocalDate start = startDate != null ? startDate : LocalDate.of(1900, 1, 1);
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
-        return healthDataDailyRepository.findAllByMemberIdAndRecordDateBetweenOrderByRecordDateDesc(memberId, start, end)
+        List<HealthDataDailyResponse> result = healthDataDailyRepository
+            .findAllByMemberIdAndRecordDateBetweenOrderByRecordDateDesc(memberId, start, end)
             .stream()
             .map(HealthDataDailyResponse::from)
-            .toList();
+            .collect(Collectors.toList());
+
+        // 일별 캐시 (6시간)
+        cacheService.setCache(cacheKey, result, 6);
+        return result;
     }
 
     /**
      * 월별 데이터 조회
      * */
     private List<HealthDataMonthlyResponse> getMonthly(Long memberId, LocalDate startDate, LocalDate endDate) {
+        // 캐시 조회
+        String cacheKey = MONTHLY_KEY + memberId;
+        List<HealthDataMonthlyResponse> cached = cacheService.getCache(cacheKey, List.class);
+        if (cached != null) return cached;
+
+        // 캐시 미스 시 DB 조회
         LocalDate start = startDate != null ? startDate : LocalDate.of(1900, 1, 1);
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
-        return healthDataDailyRepository.findMonthlyAggregates(memberId, start, end);
+        List<HealthDataMonthlyResponse> result = healthDataDailyRepository.findMonthlyAggregates(memberId, start, end);
+
+        // 월별 캐시 (24시간)
+        cacheService.setCache(cacheKey, result, 24);
+        return result;
     }
 }
