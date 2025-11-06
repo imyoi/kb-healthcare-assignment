@@ -1,5 +1,6 @@
 package com.kb.healthcare.myohui.domain.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -9,11 +10,13 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class HealthDataMonthlyResponse {
 
-    private String recordKey;
+    @JsonProperty("Monthly")
     private String recordMonth;
+
     private int steps;
     private float calories;
     private float distance;
+    private String recordKey;
 
     public HealthDataMonthlyResponse(String recordKey,
                                      Number year,
@@ -21,10 +24,10 @@ public class HealthDataMonthlyResponse {
                                      Number steps,
                                      Number calories,
                                      Number distance) {
-        this.recordKey = recordKey;
         this.recordMonth = String.format("%04d-%02d", year.intValue(), month.intValue());
         this.steps = steps.intValue();
         this.calories = calories.floatValue();
         this.distance = distance.floatValue();
+        this.recordKey = recordKey;
     }
 }
