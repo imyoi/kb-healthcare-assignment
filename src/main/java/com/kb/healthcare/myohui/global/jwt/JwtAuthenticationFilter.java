@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final TokenProvider tokenProvider;
+    private final RedisService redisService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
@@ -43,6 +44,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             Long memberId = tokenProvider.getMemberIdFromToken(token);
+
+            // 토큰 재발급 요청인 경우
+            if (request.getRequestURI().contains("/auth/refresh")) {
+                String refreshToken = redisService.getRefreshToken(memberId);
+                if (refreshToken == null) {
+                    throw new CustomException(ErrorCode.AUTH_INVALID_TOKEN);
+                }
+            }
+
             String email = tokenProvider.getEmailFromToken(token);
 
             CustomUserDetails userDetails = new CustomUserDetails(memberId, email, null);
@@ -52,9 +62,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         } catch (CustomException e) {
             log.warn("JWT 인증 실패: {}", e.getErrorCode().getMessage());
             failedAuthentication(response, e.getErrorCode());
+            return;
         } catch (Exception e) {
             log.error("JWT 필터 처리 중 예외 발생", e);
             failedAuthentication(response, ErrorCode.AUTH_INVALID_TOKEN);
+            return;
         }
 
         filterChain.doFilter(request, response);

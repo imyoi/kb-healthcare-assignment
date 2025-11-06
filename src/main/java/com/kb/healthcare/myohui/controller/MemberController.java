@@ -30,13 +30,6 @@ public class MemberController {
         return BaseResponse.success(response);
     }
 
-    @Operation(summary = "로그인")
-    @PostMapping(ApiUrl.LOGIN)
-    public BaseResponse<MemberLoginResponse> login(@Valid @RequestBody MemberLoginRequest request) {
-        MemberLoginResponse response = memberService.login(request);
-        return BaseResponse.success(response);
-    }
-
     @Operation(summary = "회원 조회")
     @GetMapping(ApiUrl.GET_MEMBER)
     public BaseResponse<MemberResponse> getMember(@AuthenticationPrincipal CustomUserDetails userDetails) {

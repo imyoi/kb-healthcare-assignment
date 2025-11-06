@@ -4,28 +4,37 @@ import com.kb.healthcare.myohui.global.enums.ErrorCode;
 import com.kb.healthcare.myohui.global.exception.CustomException;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class TokenProvider {
 
-    private final Key key;
-    private final long accessTokenExpiration;
-    private final long refreshTokenExpiration;
+    @Value("${jwt.secret}")
+    private String secretKey;
 
-    public TokenProvider(
-            @Value("${jwt.secret}") String secretKey,
-            @Value("${jwt.access-expiration}") long accessTokenExpiration,
-            @Value("${jwt.refresh-expiration}") long refreshTokenExpiration) {
-        this.key = Keys.hmacShaKeyFor(secretKey.getBytes());
-        this.accessTokenExpiration = accessTokenExpiration;
-        this.refreshTokenExpiration = refreshTokenExpiration;
+    private Key key;
+
+    @Value("${jwt.access-expiration}")
+    private long accessTokenExpiration;
+
+    @Value("${jwt.refresh-expiration}")
+    private long refreshTokenExpiration;
+
+    private final RedisService redisService;
+
+    @PostConstruct
+    public void initKey() {
+        this.key = Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
     public String createAccessToken(Long memberId, String email) {
@@ -33,7 +42,9 @@ public class TokenProvider {
     }
 
     public String createRefreshToken(Long memberId, String email) {
-        return createToken(memberId, email, refreshTokenExpiration);
+        String token = createToken(memberId, email, refreshTokenExpiration);
+        redisService.setRefreshToken(memberId, token, refreshTokenExpiration / 1000);
+        return token;
     }
 
     /**

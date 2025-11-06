@@ -1,13 +1,10 @@
 package com.kb.healthcare.myohui.service;
 
-import com.kb.healthcare.myohui.domain.dto.MemberLoginRequest;
-import com.kb.healthcare.myohui.domain.dto.MemberLoginResponse;
 import com.kb.healthcare.myohui.domain.dto.MemberResponse;
 import com.kb.healthcare.myohui.domain.dto.MemberSignupRequest;
 import com.kb.healthcare.myohui.domain.entity.Member;
 import com.kb.healthcare.myohui.global.enums.ErrorCode;
 import com.kb.healthcare.myohui.global.exception.CustomException;
-import com.kb.healthcare.myohui.global.jwt.TokenProvider;
 import com.kb.healthcare.myohui.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,7 +17,6 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final PasswordEncoder passwordEncoder;
-    private final TokenProvider tokenProvider;
 
     /**
      * 회원가입
@@ -40,24 +36,6 @@ public class MemberService {
         Member member = request.toEntity();
         Member savedMember = memberRepository.save(member);
         return MemberResponse.from(savedMember);
-    }
-
-    /**
-     * 로그인
-     */
-    @Transactional(readOnly = true)
-    public MemberLoginResponse login(MemberLoginRequest request) {
-        Member member = memberRepository.findByEmail(request.getEmail())
-            .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
-
-        // 비밀번호 검증
-        if (!passwordEncoder.matches(request.getPassword(), member.getPassword())) {
-            throw new CustomException(ErrorCode.MEMBER_PASSWORD_MISMATCH);
-        }
-
-        String accessToken = tokenProvider.createAccessToken(member.getId(), member.getEmail());
-        String refreshToken = tokenProvider.createRefreshToken(member.getId(), member.getEmail());
-        return new MemberLoginResponse(accessToken, refreshToken);
     }
 
     /**

@@ -2,6 +2,7 @@ package com.kb.healthcare.myohui.global.exception;
 
 import com.kb.healthcare.myohui.global.BaseResponse;
 import com.kb.healthcare.myohui.global.enums.ErrorCode;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestControllerAdvice(basePackages = "com.kb.healthcare.myohui")
 public class GlobalExceptionHandler {
 
@@ -36,6 +38,7 @@ public class GlobalExceptionHandler {
      * */
     @ExceptionHandler(CustomException.class)
     public BaseResponse<?> handleCustomException(CustomException e) {
+        log.error("Business logic error: ", e);
         ErrorCode code = e.getErrorCode();
         return BaseResponse.error(
             new BaseResponse.Error(code.getCode(), code.getMessage())
@@ -47,6 +50,7 @@ public class GlobalExceptionHandler {
      * */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<BaseResponse<?>> handleException(Exception e) {
+        log.error("Internal server error: ", e);
         return ResponseEntity
             .internalServerError()
             .body(BaseResponse.error(
