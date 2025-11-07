@@ -8,5 +8,7 @@ import java.util.List;
 
 public interface HealthDataRawRepository extends JpaRepository<HealthDataRaw, Long> {
 
+    boolean existsByMemberIdAndRecordKey(Long memberId, String recordKey);
+
     List<HealthDataRaw> findAllByRecordKeyAndMember(String recordKey, Member member);
 }

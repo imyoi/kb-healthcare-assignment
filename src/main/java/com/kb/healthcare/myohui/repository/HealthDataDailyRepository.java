@@ -13,7 +13,9 @@ import java.util.List;
 
 public interface HealthDataDailyRepository extends JpaRepository<HealthDataDaily, Long> {
 
-    List<HealthDataDaily> findAllByMemberIdAndRecordDateBetweenOrderByRecordDateDesc(Long memberId, LocalDate startDate, LocalDate endDate);
+    List<HealthDataDaily> findAllByMemberIdAndRecordKeyAndRecordDateBetweenOrderByRecordDateDesc(
+        Long memberId, String recordKey, LocalDate startDate, LocalDate endDate
+    );
 
     @Query("SELECT d FROM HealthDataDaily d WHERE d.recordKey = :recordKey AND d.recordDate IN :recordDates")
     List<HealthDataDaily> findAllByMemberAndRecordKeyAndRecordDateIn(
@@ -32,7 +34,7 @@ public interface HealthDataDailyRepository extends JpaRepository<HealthDataDaily
         SUM(d.totalDistance)
     )
     FROM HealthDataDaily d
-    WHERE d.member.id = :memberId
+    WHERE d.member.id = :memberId AND d.recordKey = :recordKey
       AND (:startDate IS NULL OR d.recordDate >= :startDate)
       AND (:endDate IS NULL OR d.recordDate <= :endDate)
     GROUP BY d.recordKey, YEAR(d.recordDate), MONTH(d.recordDate)
@@ -40,6 +42,7 @@ public interface HealthDataDailyRepository extends JpaRepository<HealthDataDaily
     """)
     List<HealthDataMonthlyResponse> findMonthlyAggregates(
         @Param("memberId") Long memberId,
+        @Param("recordKey") String recordKey,
         @Param("startDate") LocalDate startDate,
         @Param("endDate") LocalDate endDate
     );

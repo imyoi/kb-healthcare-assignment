@@ -4,6 +4,8 @@ import com.kb.healthcare.myohui.domain.dto.HealthDataRequest;
 import com.kb.healthcare.myohui.domain.enums.PeriodType;
 import com.kb.healthcare.myohui.global.BaseResponse;
 import com.kb.healthcare.myohui.global.constant.ApiUrl;
+import com.kb.healthcare.myohui.global.enums.ErrorCode;
+import com.kb.healthcare.myohui.global.exception.CustomException;
 import com.kb.healthcare.myohui.global.jwt.CustomUserDetails;
 import com.kb.healthcare.myohui.service.HealthDataService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,10 +33,15 @@ public class HealthDataController {
     @Operation(summary = "건강 데이터 조회")
     @GetMapping(ApiUrl.GET_HEALTH_DATA)
     public BaseResponse<?> getHealthData(@AuthenticationPrincipal CustomUserDetails userDetails,
+                                         @RequestParam(required = false) String recordKey,
                                          @RequestParam(defaultValue = "DAILY") PeriodType period,
                                          @RequestParam(required = false) LocalDate startDate,
                                          @RequestParam(required = false) LocalDate endDate) {
         Long memberId = userDetails.getMemberId();
-        return BaseResponse.success(healthDataService.getHealthData(memberId, period, startDate, endDate));
+        // 본인 recordKey 인지
+        if (!healthDataService.isRecordKeyOwnedByMember(memberId, recordKey)) {
+            throw new CustomException(ErrorCode.AUTH_FORBIDDEN);
+        }
+        return BaseResponse.success(healthDataService.getHealthData(memberId, recordKey, period, startDate, endDate));
     }
 }

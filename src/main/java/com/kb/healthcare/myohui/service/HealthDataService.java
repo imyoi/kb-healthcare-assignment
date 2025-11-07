@@ -51,9 +51,8 @@ public class HealthDataService {
         Member member = memberRepository.findById(memberId)
             .orElseThrow(() -> new CustomException(ErrorCode.MEMBER_NOT_FOUND));
 
-        String recordKey = request.getRecordKey();
-
         // 기존 raw 데이터 조회
+        String recordKey = request.getRecordKey();
         List<HealthDataRaw> existingList = healthDataRawRepository.findAllByRecordKeyAndMember(recordKey, member);
 
         // 기존 데이터 기간 set (중복 체크)
@@ -92,31 +91,46 @@ public class HealthDataService {
 
         log.info("aggregateDailyAsync call START (Thread: {})", Thread.currentThread().getName());
         healthDataAggregator.aggregateDailyAsync(member, recordKey, raws);
-        log.info("aggregateDailyAsync call E N D (Thread: {})", Thread.currentThread().getName());
 
-        // 캐시 무효화
-        cacheService.deleteCache(DAILY_KEY + memberId);
-        cacheService.deleteCache(MONTHLY_KEY + memberId);
-        log.info("[CACHE INVALIDATE] memberId={}", memberId);
+        // 캐시 무효화 (recordKey 기준)
+        invalidateCache(memberId, recordKey);
     }
+
+    /**
+     * 캐시 무효화 (recordKey 단위)
+     */
+    private void invalidateCache(Long memberId, String recordKey) {
+        cacheService.deleteCache(DAILY_KEY + memberId + ":" + recordKey);
+        cacheService.deleteCache(MONTHLY_KEY + memberId + ":" + recordKey);
+        log.info("[CACHE INVALIDATE] memberId={}, recordKey={}", memberId, recordKey);
+    }
+
+    /**
+     * recordKey가 회원 소유인지 검증
+     * TODO: 대용량 데이터 환경에서는 비효율적일 수 있으므로 추후 개선 필요
+     * */
+    public boolean isRecordKeyOwnedByMember(Long memberId, String recordKey) {
+        return healthDataRawRepository.existsByMemberIdAndRecordKey(memberId, recordKey);
+    }
+
 
     /**
      * 건강 데이터 조회 (일별 / 월별)
      * */
     @Transactional(readOnly = true)
-    public List<?> getHealthData(Long memberId, PeriodType period, LocalDate startDate, LocalDate endDate) {
+    public List<?> getHealthData(Long memberId, String recordKey, PeriodType period, LocalDate startDate, LocalDate endDate) {
         return switch (period) {
-            case DAILY -> getDaily(memberId, startDate, endDate);
-            case MONTHLY -> getMonthly(memberId, startDate, endDate);
+            case DAILY -> getDaily(memberId, recordKey, startDate, endDate);
+            case MONTHLY -> getMonthly(memberId, recordKey, startDate, endDate);
         };
     }
 
     /**
      * 일별 데이터 조회
      * */
-    private List<HealthDataDailyResponse> getDaily(Long memberId, LocalDate startDate, LocalDate endDate) {
+    private List<HealthDataDailyResponse> getDaily(Long memberId, String recordKey, LocalDate startDate, LocalDate endDate) {
         // 캐시 조회
-        String cacheKey = DAILY_KEY + memberId;
+        String cacheKey = DAILY_KEY + memberId + ":" + recordKey;
         List<HealthDataDailyResponse> cached = cacheService.getCache(cacheKey, List.class);
         if (cached != null) return cached;
 
@@ -125,7 +139,7 @@ public class HealthDataService {
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
         List<HealthDataDailyResponse> result = healthDataDailyRepository
-            .findAllByMemberIdAndRecordDateBetweenOrderByRecordDateDesc(memberId, start, end)
+            .findAllByMemberIdAndRecordKeyAndRecordDateBetweenOrderByRecordDateDesc(memberId, recordKey, start, end)
             .stream()
             .map(HealthDataDailyResponse::from)
             .collect(Collectors.toList());
@@ -138,9 +152,9 @@ public class HealthDataService {
     /**
      * 월별 데이터 조회
      * */
-    private List<HealthDataMonthlyResponse> getMonthly(Long memberId, LocalDate startDate, LocalDate endDate) {
+    private List<HealthDataMonthlyResponse> getMonthly(Long memberId, String recordKey, LocalDate startDate, LocalDate endDate) {
         // 캐시 조회
-        String cacheKey = MONTHLY_KEY + memberId;
+        String cacheKey = MONTHLY_KEY + memberId + ":" + recordKey;
         List<HealthDataMonthlyResponse> cached = cacheService.getCache(cacheKey, List.class);
         if (cached != null) return cached;
 
@@ -148,7 +162,7 @@ public class HealthDataService {
         LocalDate start = startDate != null ? startDate : LocalDate.of(1900, 1, 1);
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
-        List<HealthDataMonthlyResponse> result = healthDataDailyRepository.findMonthlyAggregates(memberId, start, end);
+        List<HealthDataMonthlyResponse> result = healthDataDailyRepository.findMonthlyAggregates(memberId, recordKey, start, end);
 
         // 월별 캐시 (24시간)
         cacheService.setCache(cacheKey, result, 24);
