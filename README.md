@@ -91,18 +91,18 @@ Access Token 만료 시에는 Redis에 저장된 토큰과 비교 검증 후 새
 sequenceDiagram
     participant Client
     participant AuthController
-    participant MemberService
+    participant AuthService
     participant TokenProvider
     participant Redis
 
     Client->>AuthController: 로그인 요청 (email, password)
-    AuthController->>MemberService: login()
-    MemberService->>TokenProvider: createAccessToken()
-    MemberService->>TokenProvider: createRefreshToken()
+    AuthController->>AuthService: login()
+    AuthService->>TokenProvider: createAccessToken()
+    AuthService->>TokenProvider: createRefreshToken()
     TokenProvider->>Redis: Refresh Token 저장
     Redis-->>TokenProvider: 저장 완료
-    TokenProvider-->>MemberService: Tokens 반환
-    MemberService-->>AuthController: Tokens 반환
+    TokenProvider-->>AuthService: Tokens 반환
+    AuthService-->>AuthController: Tokens 반환
     AuthController-->>Client: Access/Refresh Token 응답
 ```
 
@@ -158,8 +158,7 @@ sequenceDiagram
   또한 @NoArgsConstructor를 DTO에 추가해 Jackson이 역직렬화 시 객체를 정상적으로 생성할 수 있도록 처리했습니다.
 
 ## 데이터 조회 결과
-데이터 조회 결과 제출 (Daily/Monthly 레코드키 기준)
-[HealthDataSummary.md](HealthDataSummary.md) 파일 참조
+> 모든 recordKey 별 건강 데이터 조회 결과는 [HealthDataSummary.md](HealthDataSummary.md) 파일에서 확인할 수 있습니다.
 
 ### Daily
 | recordKey                            | Daily      | steps  | calories | distance |
@@ -177,8 +176,8 @@ sequenceDiagram
 ### Monthly
 | recordKey                            | Monthly | steps   | calories | distance |
 | ------------------------------------ | ------- | ------- | -------- | -------- |
-| 7836887b-b12a-440f-af0f-851546504b13 | 2024-11 | 120,594 | 4,752.75 | 88.67 |
-| 7836887b-b12a-440f-af0f-851546504b13 | 2024-12 | 108,912 | 4,893.59 | 77.23 |
+| 2024-12 | 108,912 | 4,893.59 | 77.23 | 7836887b-b12a-440f-af0f-851546504b13 |
+| 2024-11 | 120,594 | 4,752.75 | 88.67 | 7836887b-b12a-440f-af0f-851546504b13 |
 
 
 ## 산출물
@@ -190,3 +189,8 @@ sequenceDiagram
 이번 과제를 통해 Redis를 활용한 캐시 적용과 상태 기반 인증 아키텍처를 설계하고 구현하는 경험을 할 수 있었습니다.
 특히 발생 가능한 이슈들을 미리 예측하고, 원인을 분석하여 해결하는 과정에서 시스템의 안정성과 성능을 함께 고려하는 능력을 기를 수 있었습니다. 
 앞으로도 서비스 확장성과 유지보수성을 고려한 방향으로 구조를 고도화해 나가겠습니다.
+
+> **<p>향후 고려할 점</p>**
+현재 비동기 (@Async)로 처리되는 건강 데이터 집계 로직은 과제 범위 내에서는 충분하지만, 
+실제 대규모 서비스에서는 데이터 무결성을 위해 메시지 큐(Kafka/RabbitMQ 등) 도입이 필수적이라고 판단하고 있습니다.
+다만, 과제 전형의 목적과 오버 엔지니어링을 피하기 위해 이번 구현에서는 제외했지만, 확장 시 고려해야 할 사항으로 남겨두고자 합니다.
