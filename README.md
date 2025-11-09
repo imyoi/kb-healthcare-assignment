@@ -60,6 +60,10 @@ src
 ## 데이터베이스 설계
 [ERDCloud 바로가기](https://www.erdcloud.com/d/EbhBwxmPqkairuNPd)
 
+<p align="left">
+  <img src="erd.png" alt="ERD Diagram" style="width:70%;">
+</p>
+
 | 테이블                   | 설명                                    |
 |-----------------------|---------------------------------------|
 | **member**            | 회원 정보                                 |
@@ -73,8 +77,8 @@ src
 | 로그인 | 이메일, 비밀번호로 로그인, Access/Refresh Token 발급 |
 | 로그아웃 | 서버에 저장된 Refresh Token을 만료시켜 현재 세션 무효화   |
 | 토큰 재발급 | Refresh Token을 이용해 새로운 Access Token 발급  |
-| 건강 데이터 저장 | RAW 건강 데이터 저장 및 일별 집계 처리                |
-| 건강 데이터 조회 | 일별/월별 집계 데이터 조회, 조회 결과 캐싱               |
+| 건강 데이터 저장 | RAW 건강 데이터 저장 및 일별 집계 처리 (비동기)          |
+| 건강 데이터 조회 | 일별/월별 집계 데이터 조회 (Redis 캐시 적용)           |
 
 ## 구현 방법 및 설명
 ### 인증 아키텍처 (JWT + Redis)
@@ -105,10 +109,15 @@ sequenceDiagram
 ### 캐시 아키텍처 (Redis)
 건강 데이터는 회원별·일자별로 반복 조회가 많기 때문에, 조회 성능 향상을 위해 Redis 캐시 계층을 적용했습니다.
 @Cacheable 대신, 캐시 키를 명시적으로 관리할 수 있도록 별도 CacheService를 구현했습니다.
-- 캐시 조회: 데이터 요청 시 Redis 캐시를 우선 확인
-- Cache Hit: 캐시 데이터 즉시 반환
-- Cache Miss: DB 조회 후 Redis에 캐시 저장
-- 캐시 무효화: 건강 데이터 저장 시 회원의 일별/월별 캐시 삭제
+- **캐시 조회**: 데이터 요청 시 Redis 캐시를 우선 확인
+- **Cache Hi**t: 캐시 데이터 즉시 반환
+- **Cache Miss**: DB 조회 후 Redis에 캐시 저장
+- **캐시 무효화**: 건강 데이터 저장 시 회원의 일별/월별 캐시 삭제
+ 
+> **참고:**  
+> 건강 데이터 조회는 `recordKey` 단위로 이루어지며,  
+> 회원이 여러 기기(recordKey)를 보유한 경우 각 기기별 데이터가 별도로 저장·조회됩니다.  
+> 인증된 사용자(memberId)는 본인 소유의 recordKey 데이터만 조회할 수 있습니다.
 
 ```mermaid
   sequenceDiagram
@@ -149,6 +158,7 @@ sequenceDiagram
   또한 @NoArgsConstructor를 DTO에 추가해 Jackson이 역직렬화 시 객체를 정상적으로 생성할 수 있도록 처리했습니다.
 
 ## 데이터 조회 결과
+데이터 조회 결과 제출 (Daily/Monthly 레코드키 기준)
 ### Daily
 | recordKey                            | Daily      | steps  | calories | distance |
 | ------------------------------------ | ---------- | ------ | -------- | -------- |
@@ -170,6 +180,8 @@ sequenceDiagram
 ## 산출물
 - **Health Check**: http://localhost:8080/actuator/health
 - **Swagger** : http://localhost:8080/swagger-ui/index.html
+- **Postman Collection** : https://www.postman.com/your-collection-link
+> Swagger를 통한 API 문서 자동화는 적용되어 있으나, 코드 가독성과 유지보수를 위해 필드별 어노테이션 주석은 최소화했습니다.
 
 ## 마무리
 이번 과제를 통해 Redis를 활용한 캐시 적용과 상태 기반 인증 아키텍처를 설계하고 구현하는 경험을 할 수 있었습니다.
