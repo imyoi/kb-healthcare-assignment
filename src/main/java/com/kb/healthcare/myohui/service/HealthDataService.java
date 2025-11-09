@@ -158,7 +158,7 @@ public class HealthDataService {
 
         // 캐시 미스 시 DB 조회
         LocalDate start = startDate != null ? startDate : LocalDate.of(1900, 1, 1);
-        LocalDate end = endDate != null ? endDate : LocalDate.now();
+        LocalDate end = (endDate != null) ? endDate.plusDays(1) : LocalDate.now().plusDays(1);
 
         List<HealthDataMonthlyResponse> result = healthDataDailyRepository.findMonthlyAggregates(memberId, recordKey, start, end);
 
