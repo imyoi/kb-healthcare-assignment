@@ -11,6 +11,7 @@ import com.kb.healthcare.myohui.domain.enums.PeriodType;
 import com.kb.healthcare.myohui.global.cache.CacheService;
 import com.kb.healthcare.myohui.global.enums.ErrorCode;
 import com.kb.healthcare.myohui.global.exception.CustomException;
+import com.kb.healthcare.myohui.global.util.DateTimeUtils;
 import com.kb.healthcare.myohui.repository.HealthDataDailyRepository;
 import com.kb.healthcare.myohui.repository.HealthDataRawRepository;
 import com.kb.healthcare.myohui.repository.MemberRepository;
@@ -21,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -31,8 +31,6 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class HealthDataService {
-
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String DAILY_KEY = "health:daily:";
     private static final String MONTHLY_KEY = "health:monthly:";
 
@@ -65,15 +63,15 @@ public class HealthDataService {
         HealthProduct product = HealthProduct.from(request.getData().getSource().getProduct().getName());
 
         for (HealthDataRequest.Entry entry : request.getData().getEntries()) {
-            LocalDateTime from = LocalDateTime.parse(entry.getPeriod().getFrom(), FORMATTER);
-            LocalDateTime to = LocalDateTime.parse(entry.getPeriod().getTo(), FORMATTER);
+            LocalDateTime from = DateTimeUtils.parseFlexible(entry.getPeriod().getFrom());
+            LocalDateTime to = DateTimeUtils.parseFlexible(entry.getPeriod().getTo());
             String key = from + "|" + to;
 
             // 중복되지 않은 데이터만 추가
             if (!existingPeriods.contains(key)) {
                 raws.add(new HealthDataRaw(
                     member, recordKey,
-                    entry.getSteps(),
+                    Math.round(entry.getSteps()),
                     entry.getDistance().getValue(), entry.getDistance().getUnit(),
                     entry.getCalories().getValue(), entry.getCalories().getUnit(),
                     from, to, source, product

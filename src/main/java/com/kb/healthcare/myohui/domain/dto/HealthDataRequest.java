@@ -40,7 +40,7 @@ public class HealthDataRequest {
         private Period period;
         private Metric distance;
         private Metric calories;
-        private int steps;
+        private float steps;
 
         @Getter
         public static class Period {
