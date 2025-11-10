@@ -127,12 +127,16 @@ public class HealthDataService {
      * 일별 데이터 조회
      * */
     private List<HealthDataDailyResponse> getDaily(Long memberId, String recordKey, LocalDate startDate, LocalDate endDate) {
-        // 캐시 조회
+        boolean useCache = (startDate == null && endDate == null);
         String cacheKey = DAILY_KEY + memberId + ":" + recordKey;
-        List<HealthDataDailyResponse> cached = cacheService.getCache(cacheKey, List.class);
-        if (cached != null) return cached;
 
-        // 캐시 미스 시 DB 조회
+        // 캐시 조회 (날짜 조건이 없을 경우)
+        if (useCache) {
+            List<HealthDataDailyResponse> cached = cacheService.getCache(cacheKey, List.class);
+            if (cached != null) return cached;
+        }
+
+        // 캐시 미스 시 DB 조회 (날짜 조건 처리)
         LocalDate start = startDate != null ? startDate : LocalDate.of(1900, 1, 1);
         LocalDate end = endDate != null ? endDate : LocalDate.now();
 
@@ -142,8 +146,11 @@ public class HealthDataService {
             .map(HealthDataDailyResponse::from)
             .collect(Collectors.toList());
 
-        // 일별 캐시 (6시간)
-        cacheService.setCache(cacheKey, result, 6);
+        // 일별 캐시 (전체 조회인 경우 캐시 저장)
+        if (useCache) {
+            cacheService.setCache(cacheKey, result, 6);
+            log.info("[CACHE SET] key={}, ttl=6h", cacheKey);
+        }
         return result;
     }
 
@@ -151,19 +158,27 @@ public class HealthDataService {
      * 월별 데이터 조회
      * */
     private List<HealthDataMonthlyResponse> getMonthly(Long memberId, String recordKey, LocalDate startDate, LocalDate endDate) {
-        // 캐시 조회
+        boolean useCache = (startDate == null && endDate == null);
         String cacheKey = MONTHLY_KEY + memberId + ":" + recordKey;
-        List<HealthDataMonthlyResponse> cached = cacheService.getCache(cacheKey, List.class);
-        if (cached != null) return cached;
+
+        // 캐시 조회 (날짜 조건이 없을 경우)
+        if (useCache) {
+            List<HealthDataMonthlyResponse> cached = cacheService.getCache(cacheKey, List.class);
+            if (cached != null) return cached;
+        }
 
         // 캐시 미스 시 DB 조회
         LocalDate start = startDate != null ? startDate : LocalDate.of(1900, 1, 1);
-        LocalDate end = (endDate != null) ? endDate.plusDays(1) : LocalDate.now().plusDays(1);
+        LocalDate end = endDate != null ? endDate.withDayOfMonth(endDate.lengthOfMonth()) // 종료월의 말일
+            : LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth());
 
         List<HealthDataMonthlyResponse> result = healthDataDailyRepository.findMonthlyAggregates(memberId, recordKey, start, end);
 
-        // 월별 캐시 (24시간)
-        cacheService.setCache(cacheKey, result, 24);
+        // 월별 캐시 (전체 조회인 경우 캐시 저장)
+        if (useCache) {
+            cacheService.setCache(cacheKey, result, 24);
+            log.info("[CACHE SET] key={}, ttl=24h", cacheKey);
+        }
         return result;
     }
 }

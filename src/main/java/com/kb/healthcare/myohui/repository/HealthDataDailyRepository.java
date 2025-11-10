@@ -35,8 +35,7 @@ public interface HealthDataDailyRepository extends JpaRepository<HealthDataDaily
     )
     FROM HealthDataDaily d
     WHERE d.member.id = :memberId AND d.recordKey = :recordKey
-      AND (:startDate IS NULL OR d.recordDate >= :startDate)
-      AND (:endDate IS NULL OR d.recordDate <= :endDate)
+      AND d.recordDate BETWEEN :startDate AND :endDate
     GROUP BY d.recordKey, YEAR(d.recordDate), MONTH(d.recordDate)
     ORDER BY YEAR(d.recordDate) DESC, MONTH(d.recordDate) DESC
     """)
